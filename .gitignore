@@ -2,3 +2,5 @@
 .Rhistory
 shinycalendr.Rproj
 .Rbuildignore
+deploy.R
+rsconnect
