@@ -137,6 +137,15 @@ ui <- fluidPage(
           )
         ),
         tabPanel(
+          "Import a Calendar",
+          fileInput(
+            "import_calendar",
+            label = tagList(icon("upload"), "Import from CSV"),
+            accept = c(".csv")
+          ),
+          p("The CSV file should have the following columns: 'event_name' (text), 'start_date' (YYYY-MM-DD format), and 'end_date' (YYYY-MM-DD format). Make sure the date columns are properly formatted.")
+        ),
+        tabPanel(
           "Calendar Settings",
           br(),
           tabsetPanel(type = "pills",
@@ -328,8 +337,18 @@ ui <- fluidPage(
         ),
         tabPanel(
           "Event List",
-          actionButton("clearlist",
-                       label = tagList(icon("trash"), "Clear Calendar")),
+          fluidRow(
+            column(6,
+                   actionButton("clearlist",
+                                label = tagList(icon("trash"), "Clear Calendar"))
+            ),
+            column(6,
+                   downloadButton(
+                     "export_calendar",
+                     label = tagList(icon("download"), "Export to CSV")
+                   )
+            )
+          ),
           DT::DTOutput("event_table")
         ),
         tabPanel(
@@ -387,6 +406,19 @@ ui <- fluidPage(
 )
 
 server <- function(input, output, session) {
+
+
+
+  output$export_calendar <- downloadHandler(
+    filename = function() {
+      paste("calendar_events", Sys.Date(), ".csv", sep = "")
+    },
+    content = function(file) {
+      write.csv(events(), file, row.names = FALSE)
+    }
+  )
+
+
   # Reactive value to store events
   events <- reactiveVal(data.frame(
     event_name = character(),
@@ -394,6 +426,23 @@ server <- function(input, output, session) {
     end_date = as.Date(character()),
     stringsAsFactors = FALSE
   ))
+
+  observeEvent(input$import_calendar, {
+    req(input$import_calendar)
+    imported_data <- read.csv(input$import_calendar$datapath, stringsAsFactors = FALSE)
+    imported_data$start_date <- as.Date(imported_data$start_date)
+    imported_data$end_date <- as.Date(imported_data$end_date)
+    if (all(c("event_name", "start_date", "end_date") %in% colnames(imported_data))) {
+      events(imported_data)
+    } else {
+      showModal(modalDialog(
+        title = "Invalid File",
+        "The uploaded file must contain the columns: 'event_name', 'start_date', 'end_date'.",
+        easyClose = TRUE
+      ))
+    }
+  })
+
   # Reactive value to store events
 
   # Show or hide the "Lista de Eventos" tab
